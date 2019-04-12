@@ -26,6 +26,8 @@
 # - `title` - The titlecase'd slug
 #
 
+require 'yaml'
+
 module Jekyll
 
   class DirectoryTag < Liquid::Block
@@ -60,7 +62,7 @@ module Jekyll
       end
 
       directory_files = File.join(listed_dir, "*")
-      files = Dir.glob(directory_files).reject{|f| f =~ @exclude }
+      files = Dir.glob(directory_files)
       files.sort! {|x,y| @reverse ? x <=> y : y <=> x }
 
       length = files.length
@@ -70,8 +72,15 @@ module Jekyll
         files.each_with_index do |filename, index|
           basename = File.basename(filename)
 
-          url = filename.dup
-          url.slice!(source_dir)
+          filepath  = [path, basename] - ['.']
+          filepath = filepath.map { |path| path.split('/')}.flatten
+          url  = filepath.join('/')
+
+          begin
+            front_matter = YAML.load_file(File.join(File.dirname(__FILE__), '../', url))
+          rescue
+            front_matter = {}
+          end
 
           m, cats, date, slug, ext = *basename.match(STANDARD_POST_FILENAME_MATCHER)
 
@@ -90,7 +99,7 @@ module Jekyll
             'name' => basename,
             'slug' => slug,
             'url' => url
-          }
+          }.merge(front_matter)
 
           context['forloop'] = {
             'name' => 'directory',
